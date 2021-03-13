@@ -30,11 +30,14 @@ struct FileInfo {
 bool GetFileInfo(const char *path, FileInfo *fileInfo);
 
 enum {
-	GETFILES_GETHIDDEN = 1
+	GETFILES_GETHIDDEN = 1,
+	GETFILES_URIENCODE = 2,  // Android shenanigans
 };
 size_t GetFilesInDir(const char *directory, std::vector<FileInfo> *files, const char *filter = nullptr, int flags = 0);
+
+// rootDir should NOT include the directory separator.
 #ifndef _WIN32
-size_t GetFilesInDirByFd(int fd, std::vector<FileInfo> *files, const char *filter = nullptr, int flags = 0);
+size_t GetFilesInDirByFd(int fd, const std::string &rootDir, std::vector<FileInfo> *files, const char *filter = nullptr, int flags = 0);
 #endif
 int64_t GetDirectoryRecursiveSize(const std::string &path, const char *filter = nullptr, int flags = 0);
 
