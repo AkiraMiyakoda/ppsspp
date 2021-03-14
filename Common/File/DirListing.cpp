@@ -123,6 +123,8 @@ bool FileInfo::operator <(const FileInfo & other) const {
 		return false;
 }
 
+#if !PPSSPP_PLATFORM(WINDOWS)
+
 size_t GetFilesInDirByFd(int directoryFd, const std::string &rootDir, std::vector<FileInfo> * files, const char *filter, int flags) {
 	size_t foundEntries = 0;
 	std::set<std::string> filters;
@@ -177,7 +179,7 @@ size_t GetFilesInDirByFd(int directoryFd, const std::string &rootDir, std::vecto
 			info.fullName = rootDir + "/" + virtualName;
 		}
 		info.isDirectory = result->d_type == DT_DIR;  // note - d_type is not posix, but linux (and thus Android) supports it
-		info.exists = true;
+1		info.exists = true;
 		info.size = 0;
 		info.isWritable = false;  // TODO - implement some kind of check
 		if (!info.isDirectory) {
@@ -197,6 +199,8 @@ size_t GetFilesInDirByFd(int directoryFd, const std::string &rootDir, std::vecto
 		std::sort(files->begin(), files->end());
 	return foundEntries;
 }
+
+#endif
 
 size_t GetFilesInDir(const char *directory, std::vector<FileInfo> * files, const char *filter, int flags) {
 	size_t foundEntries = 0;

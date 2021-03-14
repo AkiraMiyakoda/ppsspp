@@ -14,10 +14,10 @@ namespace File {
 struct FileInfo {
 	std::string name;
 	std::string fullName;
-	bool exists;
-	bool isDirectory;
-	bool isWritable;
-	uint64_t size;
+	bool exists = false;
+	bool isDirectory = false;
+	bool isWritable = false;
+	uint64_t size = 0;
 
 	uint64_t atime;
 	uint64_t mtime;
