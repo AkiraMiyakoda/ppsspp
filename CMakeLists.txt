@@ -1076,6 +1076,7 @@ list(APPEND NativeAppSource
 	UI/Store.cpp
 	UI/CwCheatScreen.cpp
 	UI/InstallZipScreen.cpp
+	UI/MemStickScreen.cpp
 	UI/ProfilerDraw.cpp
 	UI/TextureUtil.cpp
 	UI/ComboKeyMappingScreen.cpp

@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 
 #include "Common/LogManager.h"
 #include "Common/File/DirListing.h"
@@ -39,6 +40,8 @@ bool Android_CreateDirectory(const std::string &parentTreeUri, const std::string
 bool Android_CreateFile(const std::string &parentTreeUri, const std::string &fileName);
 bool Android_RemoveFile(const std::string &fileUri);
 bool Android_GetFileInfo(const std::string &fileUri, FileInfo *info);
+int64_t Android_GetFreeSpaceByContentUri(const std::string &uri);
+int64_t Android_GetFreeSpaceByFilePath(const std::string &filePath);
 
 std::vector<FileInfo> Android_ListContentUri(const std::string &uri);
 

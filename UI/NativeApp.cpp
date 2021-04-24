@@ -501,11 +501,6 @@ void NativeInit(int argc, const char *argv[], const char *savegame_dir, const ch
 
 #if defined(__ANDROID__)
 
-	// TODO: This needs to change in Android 12.
-	//
-	// Maybe there should be an option to use internal memory instead, but I think
-	// that for most people, using external memory (SDCard/USB Storage) makes the
-	// most sense.
 	g_Config.memStickDirectory = g_Config.externalDirectory + "/";
 	g_Config.flash0Directory = g_Config.externalDirectory + "/flash0/";
 
@@ -513,10 +508,16 @@ void NativeInit(int argc, const char *argv[], const char *savegame_dir, const ch
 	if (File::Exists(memstickDirFile)) {
 		std::string memstickDir;
 		File::ReadFileToString(true, memstickDirFile.c_str(), memstickDir);
+
+		// TODO: This File::Exists function doesn't work with content uris.
 		if (!memstickDir.empty() && File::Exists(memstickDir)) {
 			g_Config.memStickDirectory = memstickDir + "/";
+			INFO_LOG(SYSTEM, "Memstick Directory from memstick_dir.txt: %s", g_Config.memStickDirectory.c_str());
+		} else {
+			INFO_LOG(SYSTEM, "Invalid memstick directory in memstick_dir.txt, ignoring");
 		}
 	}
+
 #elif PPSSPP_PLATFORM(IOS)
 	g_Config.memStickDirectory = user_data_path;
 	g_Config.flash0Directory = std::string(external_dir) + "/flash0/";

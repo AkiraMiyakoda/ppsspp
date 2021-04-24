@@ -121,8 +121,12 @@ bool AndroidDirectoryFileHandle::Open(const std::string &basePath, std::string &
 		success = false;
 	}
 
-	// Seek to end if append mode.
-	Seek(0, FILEMOVE_END);
+	// TODO: Experiment with fstat to see if we can extract more info.
+
+	// Seek to end to simulate append mode, if requested.
+	if (access & FILEACCESS_APPEND) {
+		Seek(0, FILEMOVE_END);
+	}
 
 	// Try to detect reads/writes to PSP/GAME to avoid them in replays.
 	if (basePath.find("/PSP/GAME/") != std::string::npos) {
@@ -444,10 +448,11 @@ std::vector<PSPFileInfo> AndroidStorageFileSystem::GetDirListing(std::string pat
 	bool hideISOFiles = PSP_CoreParameter().compat.flags().HideISOFiles;
 	for (auto &info : fileInfo) {
 		PSPFileInfo entry;
-		if (info.isDirectory)
+		if (info.isDirectory) {
 			entry.type = FILETYPE_DIRECTORY;
-		else
+		} else {
 			entry.type = FILETYPE_NORMAL;
+		}
 		entry.access = info.isWritable ? 0777 : 0666;
 		entry.name = info.name;
 		if (Flags() & FileSystemFlags::SIMULATE_FAT32) {
@@ -471,8 +476,9 @@ std::vector<PSPFileInfo> AndroidStorageFileSystem::GetDirListing(std::string pat
 		localtime_r((time_t*)&atime, &entry.atime);
 		localtime_r((time_t*)&ctime, &entry.ctime);
 		localtime_r((time_t*)&mtime, &entry.mtime);
-		if (!hideFile && (!listingRoot || (strcmp(info.name.c_str(), "..") && strcmp(info.name.c_str(), "."))))
+		if (!hideFile && (!listingRoot || (strcmp(info.name.c_str(), "..") && strcmp(info.name.c_str(), ".")))) {
 			myVector.push_back(entry);
+		}
 	}
 
 	return ReplayApplyDiskListing(myVector, CoreTiming::GetGlobalTimeUs());
