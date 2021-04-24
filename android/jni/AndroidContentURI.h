@@ -19,11 +19,11 @@ private:
 	std::string file;
 public:
 	AndroidStorageContentURI() {}
-	explicit AndroidStorageContentURI(std::string &path) {
+	explicit AndroidStorageContentURI(const std::string &path) {
 		Parse(path);
 	}
 
-	bool Parse(std::string &path) {
+	bool Parse(const std::string &path) {
 		const char *prefix = "content://";
 		if (!startsWith(path, prefix)) {
 			return false;
