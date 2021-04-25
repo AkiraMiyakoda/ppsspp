@@ -26,6 +26,8 @@
 
 #include "Common/Common.h"
 
+// Some functions here support Android content URIs. These are marked as such.
+
 #ifdef _MSC_VER
 inline struct tm* localtime_r(const time_t *clock, struct tm *result) {
 	if (localtime_s(result, clock) == 0)
@@ -43,10 +45,11 @@ bool OpenCPPFile(std::fstream & stream, const std::string &filename, std::ios::o
 // Resolves symlinks and similar.
 std::string ResolvePath(const std::string &path);
 
-// Returns true if file filename exists
+// Returns true if file filename exists. Will return true on directories.
 bool Exists(const std::string &filename);
 
-// Returns true if filename is a directory
+// Returns true if filename exists, and is a directory
+// Supports Android content URIs.
 bool IsDirectory(const std::string &filename);
 
 // Parses the extension out from a filename.

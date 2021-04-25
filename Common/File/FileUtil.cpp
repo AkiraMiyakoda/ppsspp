@@ -24,6 +24,8 @@
 
 #include "ppsspp_config.h"
 
+#include "android/jni/app-android.h"
+
 #ifdef __MINGW32__
 #include <unistd.h>
 #ifndef _POSIX_THREAD_SAFE_FUNCTIONS
@@ -209,7 +211,6 @@ static void StripTailDirSlashes(std::string &fname) {
 	return;
 }
 
-// Returns true if file filename exists. Will return true on directories.
 bool Exists(const std::string &filename) {
 	std::string fn = filename;
 	StripTailDirSlashes(fn);
@@ -235,7 +236,7 @@ bool Exists(const std::string &filename) {
 #endif
 }
 
-// Returns true if filename is a directory
+// Returns true if filename exists and is a directory
 bool IsDirectory(const std::string &filename)
 {
 	std::string fn = filename;
@@ -245,7 +246,10 @@ bool IsDirectory(const std::string &filename)
 	std::wstring copy = ConvertUTF8ToWString(fn);
 	WIN32_FILE_ATTRIBUTE_DATA data{};
 	if (!GetFileAttributesEx(copy.c_str(), GetFileExInfoStandard, &data) || data.dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
-		WARN_LOG(COMMON, "GetFileAttributes failed on %s: %08x", fn.c_str(), (uint32_t)GetLastError());
+		DWORD lastError = GetLastError();
+		if (lastError != ERROR_FILE_NOT_FOUND) {
+			WARN_LOG(COMMON, "GetFileAttributes failed on %s: %08x", fn.c_str(), (uint32_t)GetLastError());
+		}
 		return false;
 	}
 	DWORD result = data.dwFileAttributes;
