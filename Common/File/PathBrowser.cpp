@@ -269,7 +269,7 @@ bool PathBrowser::GetListing(std::vector<File::FileInfo> &fileInfo, const char *
 
 #if PPSSPP_PLATFORM(ANDROID)
 	if (Android_IsContentUri(path_)) {
-		std::vector<FileInfo> files = Android_ListContentUri(path_);
+		std::vector<File::FileInfo> files = Android_ListContentUri(path_);
 
 		fileInfo.clear();
 

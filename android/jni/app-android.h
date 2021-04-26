@@ -42,7 +42,7 @@ bool Android_GetFileInfo(const std::string &fileUri, File::FileInfo *info);
 int64_t Android_GetFreeSpaceByContentUri(const std::string &uri);
 int64_t Android_GetFreeSpaceByFilePath(const std::string &filePath);
 
-std::vector<FileInfo> Android_ListContentUri(const std::string &uri);
+std::vector<File::FileInfo> Android_ListContentUri(const std::string &uri);
 
 #else
 

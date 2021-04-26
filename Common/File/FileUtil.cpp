@@ -411,7 +411,8 @@ bool CreateDirIn(const std::string &parentDir, const std::string &newDirName) {
 	std::string fullName = parentDir + "/" + newDirName;
 	if (mkdir(fullName.c_str(), 0755) == 0)
 		return true;
-	if (errno == EEXIST) {
+	int err = errno;
+	if (err == EEXIST) {
 		WARN_LOG(COMMON, "CreateDir: mkdir failed on %s: already exists", fullName.c_str());
 		return true;
 	}

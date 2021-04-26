@@ -295,7 +295,7 @@ bool Android_RemoveFile(const std::string &fileUri) {
 	return env->CallBooleanMethod(nativeActivity, contentUriRemoveFile, paramFileName);
 }
 
-bool Android_GetFileInfo(const std::string &fileUri, FileInfo *info) {
+bool Android_GetFileInfo(const std::string &fileUri, File::FileInfo *info) {
 	if (!nativeActivity) {
 		return -1;
 	}
@@ -304,16 +304,16 @@ bool Android_GetFileInfo(const std::string &fileUri, FileInfo *info) {
 	return env->CallObjectMethod(nativeActivity, contentUriGetFileInfo, paramFileUri);
 }
 
-std::vector<FileInfo> Android_ListContentUri(const std::string &path) {
+std::vector<File::FileInfo> Android_ListContentUri(const std::string &path) {
 	if (!nativeActivity) {
-		return std::vector<FileInfo>();
+		return std::vector<File::FileInfo>();
 	}
 	auto env = getEnv();
 	jstring param = env->NewStringUTF(path.c_str());
 	jobject retval = env->CallObjectMethod(nativeActivity, listContentUriDir, param);
 
 	jobjectArray fileList = (jobjectArray)retval;
-	std::vector<FileInfo> items;
+	std::vector<File::FileInfo> items;
 	int size = env->GetArrayLength(fileList);
 	for (int i = 0; i < size; i++) {
         jstring str = (jstring) env->GetObjectArrayElement(fileList, i);
@@ -326,7 +326,7 @@ std::vector<FileInfo> Android_ListContentUri(const std::string &path) {
 			if (parts.size() != 5) {
 				continue;
 			}
-			FileInfo info;
+			File::FileInfo info;
 			info.name = parts[2];
 			info.isDirectory = parts[0][0] == 'D';
 			info.exists = true;

@@ -62,7 +62,7 @@ bool AndroidDirectoryFileHandle::Open(const std::string &basePath, std::string &
 	}
 
 	// Check for existance and directory, so we can make better decisions below.
-	FileInfo fileInfo;
+	File::FileInfo fileInfo;
 	if (!Android_GetFileInfo(contentUri.ToString(), &fileInfo)) {
 		ERROR_LOG(FILESYS, "Failed to call Android_GetFileInfo on %s", contentUri.ToString().c_str());
 		return false;
@@ -402,7 +402,7 @@ PSPFileInfo AndroidStorageFileSystem::GetFileInfo(std::string filename) {
 
 	std::string uri = GetLocalPath(filename);
 
-	FileInfo info;
+	File::FileInfo info;
 	if (!Android_GetFileInfo(uri, &info)) {
 		return ReplayApplyDiskFileInfo(x, CoreTiming::GetGlobalTimeUs());
 	}
@@ -443,7 +443,7 @@ std::vector<PSPFileInfo> AndroidStorageFileSystem::GetDirListing(std::string pat
 
 	std::string uri = GetLocalPath(path);
 
-	std::vector<FileInfo> fileInfo = Android_ListContentUri(uri);
+	std::vector<File::FileInfo> fileInfo = Android_ListContentUri(uri);
 
 	bool hideISOFiles = PSP_CoreParameter().compat.flags().HideISOFiles;
 	for (auto &info : fileInfo) {
