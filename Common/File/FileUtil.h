@@ -73,6 +73,10 @@ uint64_t GetFileSize(FILE *f);
 // Returns true if successful, or path already exists.
 bool CreateDir(const std::string &filename);
 
+// Returns true if successful, or path already exists.
+// Supports Android Content Storage URIs, unlike CreateDir.
+bool CreateDirIn(const std::string &parentDir, const std::string &newDirName);
+
 // Creates the full path of fullPath returns true on success
 bool CreateFullPath(const std::string &fullPath);
 
@@ -98,7 +102,7 @@ bool DeleteDirRecursively(const std::string &directory);
 
 // Opens ini file (cheats, texture replacements etc.)
 // TODO: Belongs in System or something.
-void OpenFileInEditor(const std::string& fileName);
+bool OpenFileInEditor(const std::string& fileName);
 
 // TODO: Belongs in System or something.
 const std::string &GetExeDirectory();

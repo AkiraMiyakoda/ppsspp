@@ -346,6 +346,16 @@ bool Delete(const std::string &filename) {
 
 // Returns true if successful, or path already exists.
 bool CreateDir(const std::string &path) {
+	if (Android_IsContentUri(path)) {
+		AndroidStorageContentURI uri(path);
+		std::string newDirName = uri.GetLastPart();
+		if (uri.NavigateUp()) {
+			return Android_CreateDirectory(uri.ToString(), newDirName);
+		} else {
+			// Bad path - can't create this directory.
+			return false;
+		}
+	}
 	std::string fn = path;
 	StripTailDirSlashes(fn);
 	DEBUG_LOG(COMMON, "CreateDir('%s')", fn.c_str());
@@ -377,9 +387,46 @@ bool CreateDir(const std::string &path) {
 #endif
 }
 
+// Returns true if successful, or path already exists.
+// Supports Android Content Storage URIs more reliably than CreateDir.
+bool CreateDirIn(const std::string &parentDir, const std::string &newDirName) {
+	if (Android_IsContentUri(parentDir)) {
+		return Android_CreateDirectory(parentDir, newDirName);
+	}
+	std::string fn = parentDir;
+	StripTailDirSlashes(fn);
+	DEBUG_LOG(COMMON, "CreateDir('%s')", fn.c_str());
+#ifdef _WIN32
+	std::string fullName = parentDir + "\\" + newDirName;
+	if (::CreateDirectory(ConvertUTF8ToWString(fullName).c_str(), NULL))
+		return true;
+	DWORD error = GetLastError();
+	if (error == ERROR_ALREADY_EXISTS) {
+		WARN_LOG(COMMON, "CreateDir: CreateDirectory failed on %s: already exists", fullName.c_str());
+		return true;
+	}
+	ERROR_LOG(COMMON, "CreateDir: CreateDirectory failed on %s: %08x", fullName.c_str(), (uint32_t)error);
+	return false;
+#else
+	std::string fullName = parentDir + "/" + newDirName;
+	if (mkdir(fullName.c_str(), 0755) == 0)
+		return true;
+	if (errno == EEXIST) {
+		WARN_LOG(COMMON, "CreateDir: mkdir failed on %s: already exists", fullName.c_str());
+		return true;
+	}
+	ERROR_LOG(COMMON, "CreateDir: mkdir failed on %s: %s", fullName.c_str(), strerror(err));
+	return false;
+#endif
+}
+
 // Creates the full path of fullPath returns true on success
-bool CreateFullPath(const std::string &path)
-{
+bool CreateFullPath(const std::string &path) {
+	if (Android_IsContentUri(path)) {
+		ERROR_LOG(COMMON, "CreateFullPath(%s): Not supported", path.c_str());
+		return false;
+	}
+
 	std::string fullPath = path;
 	StripTailDirSlashes(fullPath);
 	int panicCounter = 100;
@@ -425,8 +472,7 @@ bool CreateFullPath(const std::string &path)
 }
 
 // Deletes a directory filename, returns true on success
-bool DeleteDir(const std::string &filename)
-{
+bool DeleteDir(const std::string &filename) {
 	if (Android_IsContentUri(filename)) {
 		return Android_RemoveFile(filename);
 	}
@@ -453,10 +499,9 @@ bool DeleteDir(const std::string &filename)
 }
 
 // renames file srcFilename to destFilename, returns true on success 
-bool Rename(const std::string &srcFilename, const std::string &destFilename)
-{
+bool Rename(const std::string &srcFilename, const std::string &destFilename) {
 	if (Android_IsContentUri(srcFilename) || Android_IsContentUri(destFilename)) {
-		ERROR_LOG(COMMON, "Moving files by Android URI is not yet working");
+		ERROR_LOG(COMMON, "Moving files by Android URI is not yet supported");
 		return false;
 	}
 
@@ -477,8 +522,11 @@ bool Rename(const std::string &srcFilename, const std::string &destFilename)
 }
 
 // copies file srcFilename to destFilename, returns true on success 
-bool Copy(const std::string &srcFilename, const std::string &destFilename)
-{
+bool Copy(const std::string &srcFilename, const std::string &destFilename) {
+	if (Android_IsContentUri(srcFilename) || Android_IsContentUri(destFilename)) {
+		ERROR_LOG(COMMON, "Copying files by Android URI is not yet supported");
+		return false;
+	}
 	INFO_LOG(COMMON, "Copy: %s --> %s", 
 			srcFilename.c_str(), destFilename.c_str());
 #ifdef _WIN32
@@ -558,7 +606,8 @@ bool Copy(const std::string &srcFilename, const std::string &destFilename)
 
 std::string GetDir(const std::string &path) {
 	if (Android_IsContentUri(path)) {
-		// TODO
+		ERROR_LOG(COMMON, "GetDir on Android URI is not yet supported");
+		return path;
 	}
 
 	if (path == "/")
@@ -580,8 +629,9 @@ std::string GetDir(const std::string &path) {
 
 std::string GetFilename(std::string path) {
 	if (Android_IsContentUri(path)) {
-
-		// TODO
+		// TODO: Not really accurate in all situations.
+		AndroidStorageContentURI uri(path);
+		return uri.GetLastPart();
 	}
 	size_t off = GetDir(path).size() + 1;
 	if (off < path.size())
@@ -605,6 +655,15 @@ std::string GetFileExtension(const std::string & fn) {
 // Returns the size of file (64bit)
 // TODO: Add a way to return an error.
 uint64_t GetFileSize(const std::string &filename) {
+	if (Android_IsContentUri(filename)) {
+		FileInfo info;
+		if (Android_GetFileInfo(filename, &info)) {
+			return info.size;
+		} else {
+			return 0;
+		}
+	}
+
 #if defined(_WIN32) && defined(UNICODE)
 	WIN32_FILE_ATTRIBUTE_DATA attr;
 	if (!GetFileAttributesEx(ConvertUTF8ToWString(filename).c_str(), GetFileExInfoStandard, &attr))
@@ -633,8 +692,7 @@ uint64_t GetFileSize(const std::string &filename) {
 #endif
 }
 
-uint64_t GetFileSize(FILE *f)
-{
+uint64_t GetFileSize(FILE *f) {
 	// This will only support 64-bit when large file support is available.
 	// That won't be the case on some versions of Android, at least.
 #if defined(__ANDROID__) || (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS < 64)
@@ -673,8 +731,7 @@ uint64_t GetFileSize(FILE *f)
 }
 
 // creates an empty file filename, returns true on success 
-bool CreateEmptyFile(const std::string &filename)
-{
+bool CreateEmptyFile(const std::string &filename) {
 	INFO_LOG(COMMON, "CreateEmptyFile: %s", filename.c_str()); 
 	FILE *pFile = OpenCFile(filename, "wb");
 	if (!pFile) {
@@ -686,8 +743,12 @@ bool CreateEmptyFile(const std::string &filename)
 }
 
 // Deletes the given directory and anything under it. Returns true on success.
-bool DeleteDirRecursively(const std::string &directory)
-{	
+bool DeleteDirRecursively(const std::string &directory) {
+	if (Android_IsContentUri(directory)) {
+		ERROR_LOG(COMMON, "DeleteDirRecursively(%s) not yet supported on content URIs", directory.c_str());
+		return false;
+	}
+
 	//Removed check, it prevents the UWP from deleting store downloads
 	INFO_LOG(COMMON, "DeleteDirRecursively: %s", directory.c_str());
 
@@ -759,7 +820,14 @@ bool DeleteDirRecursively(const std::string &directory)
 	return File::DeleteDir(directory);
 }
 
-void OpenFileInEditor(const std::string& fileName) {
+bool OpenFileInEditor(const std::string& fileName) {
+	if (Android_IsContentUri(fileName)) {
+		// TODO: This might even be supportable?
+
+		ERROR_LOG(COMMON, "OpenFileInEditor(%s) not yet supported on content URIs", fileName.c_str());
+		return false;
+	}
+
 #if defined(_WIN32)
 #if PPSSPP_PLATFORM(UWP)
 	// Do nothing.
@@ -780,10 +848,10 @@ void OpenFileInEditor(const std::string& fileName) {
 		ERROR_LOG(COMMON, "Failed to launch ini file");
 	}
 #endif
+	return true;
 }
 
-const std::string &GetExeDirectory()
-{
+const std::string &GetExeDirectory() {
 	static std::string ExePath;
 
 	if (ExePath.empty()) {
@@ -951,8 +1019,7 @@ bool IOFile::Resize(uint64_t size)
 	return m_good;
 }
 
-bool ReadFileToString(bool text_file, const char *filename, std::string & str)
-{
+bool ReadFileToString(bool text_file, const char *filename, std::string & str) {
 	FILE *f = File::OpenCFile(filename, text_file ? "r" : "rb");
 	if (!f)
 		return false;
@@ -992,8 +1059,7 @@ uint8_t *ReadLocalFile(const char *filename, size_t * size) {
 	return contents;
 }
 
-bool WriteStringToFile(bool text_file, const std::string &str, const char *filename)
-{
+bool WriteStringToFile(bool text_file, const std::string &str, const char *filename) {
 	FILE *f = File::OpenCFile(filename, text_file ? "w" : "wb");
 	if (!f)
 		return false;
@@ -1007,8 +1073,7 @@ bool WriteStringToFile(bool text_file, const std::string &str, const char *filen
 	return true;
 }
 
-bool WriteDataToFile(bool text_file, const void* data, const unsigned int size, const char *filename)
-{
+bool WriteDataToFile(bool text_file, const void* data, const unsigned int size, const char *filename) {
 	FILE *f = File::OpenCFile(filename, text_file ? "w" : "wb");
 	if (!f)
 		return false;
