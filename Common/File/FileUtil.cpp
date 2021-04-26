@@ -25,6 +25,7 @@
 #include "ppsspp_config.h"
 
 #include "android/jni/app-android.h"
+#include "android/jni/AndroidContentURI.h"
 
 #ifdef __MINGW32__
 #include <unistd.h>
@@ -93,11 +94,23 @@
 // This namespace has various generic functions related to files and paths.
 // The code still needs a ton of cleanup.
 // REMEMBER: strdup considered harmful!
-namespace File
-{
+namespace File {
 
-FILE *OpenCFile(const std::string &filename, const char *mode)
-{
+FILE *OpenCFile(const std::string &filename, const char *mode) {
+	if (Android_IsContentUri(filename)) {
+		if (!strcmp(mode, "r") || !strcmp(mode, "rb")) {
+			// Read, let's support this - easy one.
+			int descriptor = Android_OpenContentUriFd(filename, Android_OpenContentUriMode::READ);
+			if (descriptor == -1) {
+				return nullptr;
+			}
+			return fdopen(descriptor, "rb");
+		} else {
+			ERROR_LOG(COMMON, "OpenCFile(%s): Mode not yet supported: %s", filename.c_str(), mode);
+			return nullptr;
+		}
+	}
+
 #if defined(_WIN32) && defined(UNICODE)
 	return _wfopen(ConvertUTF8ToWString(filename).c_str(), ConvertUTF8ToWString(mode).c_str());
 #else
@@ -105,8 +118,12 @@ FILE *OpenCFile(const std::string &filename, const char *mode)
 #endif
 }
 
-bool OpenCPPFile(std::fstream & stream, const std::string &filename, std::ios::openmode mode)
-{
+bool OpenCPPFile(std::fstream & stream, const std::string &filename, std::ios::openmode mode) {
+	if (Android_IsContentUri(filename)) {
+		ERROR_LOG(COMMON, "OpenCPPFile(%s): Not yet supported", filename.c_str());
+		return false;
+	}
+
 #if defined(_WIN32) && defined(UNICODE) && !defined(__MINGW32__)
 	stream.open(ConvertUTF8ToWString(filename), mode);
 #else
@@ -152,6 +169,12 @@ std::string ResolvePath(const std::string &path) {
 	if (startsWith(path, "http://") || startsWith(path, "https://")) {
 		return path;
 	}
+
+	if (Android_IsContentUri(path)) {
+		// Nothing to do.
+		return path;
+	}
+
 #ifdef _WIN32
 	static const int BUF_SIZE = 32768;
 	wchar_t *buf = new wchar_t[BUF_SIZE] {};
@@ -212,8 +235,17 @@ static void StripTailDirSlashes(std::string &fname) {
 }
 
 bool Exists(const std::string &filename) {
+	if (Android_IsContentUri(filename)) {
+		FileInfo info;
+		if (!Android_GetFileInfo(filename, &info)) {
+			return false;
+		}
+		return info.exists;
+	}
+
 	std::string fn = filename;
 	StripTailDirSlashes(fn);
+
 
 #if defined(_WIN32)
 	std::wstring copy = ConvertUTF8ToWString(fn);
@@ -237,8 +269,15 @@ bool Exists(const std::string &filename) {
 }
 
 // Returns true if filename exists and is a directory
-bool IsDirectory(const std::string &filename)
-{
+bool IsDirectory(const std::string &filename) {
+	if (Android_IsContentUri(filename)) {
+		FileInfo info;
+		if (!Android_GetFileInfo(filename, &info)) {
+			return false;
+		}
+		return info.isDirectory;
+	}
+
 	std::string fn = filename;
 	StripTailDirSlashes(fn);
 
@@ -269,6 +308,11 @@ bool IsDirectory(const std::string &filename)
 // Deletes a given filename, return true on success
 // Doesn't supports deleting a directory
 bool Delete(const std::string &filename) {
+	if (Android_IsContentUri(filename)) {
+		FileInfo info;
+		return Android_RemoveFile(filename);
+	}
+
 	INFO_LOG(COMMON, "Delete: file %s", filename.c_str());
 
 	// Return true because we care about the file no 
@@ -301,8 +345,7 @@ bool Delete(const std::string &filename) {
 }
 
 // Returns true if successful, or path already exists.
-bool CreateDir(const std::string &path)
-{
+bool CreateDir(const std::string &path) {
 	std::string fn = path;
 	StripTailDirSlashes(fn);
 	DEBUG_LOG(COMMON, "CreateDir('%s')", fn.c_str());
@@ -384,6 +427,10 @@ bool CreateFullPath(const std::string &path)
 // Deletes a directory filename, returns true on success
 bool DeleteDir(const std::string &filename)
 {
+	if (Android_IsContentUri(filename)) {
+		return Android_RemoveFile(filename);
+	}
+
 	INFO_LOG(COMMON, "DeleteDir: directory %s", filename.c_str());
 
 	// check if a directory
@@ -408,6 +455,11 @@ bool DeleteDir(const std::string &filename)
 // renames file srcFilename to destFilename, returns true on success 
 bool Rename(const std::string &srcFilename, const std::string &destFilename)
 {
+	if (Android_IsContentUri(srcFilename) || Android_IsContentUri(destFilename)) {
+		ERROR_LOG(COMMON, "Moving files by Android URI is not yet working");
+		return false;
+	}
+
 	INFO_LOG(COMMON, "Rename: %s --> %s", 
 			srcFilename.c_str(), destFilename.c_str());
 #if defined(_WIN32) && defined(UNICODE)
@@ -505,6 +557,10 @@ bool Copy(const std::string &srcFilename, const std::string &destFilename)
 }
 
 std::string GetDir(const std::string &path) {
+	if (Android_IsContentUri(path)) {
+		// TODO
+	}
+
 	if (path == "/")
 		return path;
 	int n = (int)path.size() - 1;
@@ -523,6 +579,10 @@ std::string GetDir(const std::string &path) {
 }
 
 std::string GetFilename(std::string path) {
+	if (Android_IsContentUri(path)) {
+
+		// TODO
+	}
 	size_t off = GetDir(path).size() + 1;
 	if (off < path.size())
 		return path.substr(off);
